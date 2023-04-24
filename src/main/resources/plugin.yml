@@ -1,0 +1,11 @@
+name: BreakingSlab
+version: '1.0'
+authors:
+  - Shershnyaga_
+  - LollipopMC
+depend:
+  - LollipopLibs
+softdepend:
+  - WorldGuard
+main: net.lollipopmc.breakingslab.BreakingSlab
+api-version: 1.17
