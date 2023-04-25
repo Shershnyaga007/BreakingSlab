@@ -15,7 +15,9 @@ import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import java.util.Objects;
-import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public class OnSlabBreak implements Listener {
 
@@ -32,7 +34,6 @@ public class OnSlabBreak implements Listener {
         Player player = event.getPlayer();
 
         try {
-
             if (!BslabWorldGuard.canPlayerHasPermissionToBreak(player, event.getBlock().getLocation()))
                 return;
 
@@ -40,29 +41,43 @@ public class OnSlabBreak implements Listener {
 
         }
 
-        if (!canPlayerEnabledBslab(player))
-            return;
-
         event.setCancelled(true);
 
-        Location location = player.getEyeLocation();
-        Vector direction = location.getDirection();
+        Executor executor = Executors.newCachedThreadPool();
+        CompletableFuture<BslabUserDatabase.BslabUser> future = new CompletableFuture<>();
 
-        RayTraceResult result = player.getWorld().rayTraceBlocks(location, direction, 8);
-        Vector resultDirection = Objects.requireNonNull(result).getHitPosition();
-        
-        double resultYAtBlock;
-        if (resultDirection.getBlockY() > block.getLocation().getBlockY())
-            resultYAtBlock = 1;
-        else
-            resultYAtBlock = Math.abs(resultDirection.getY() % 1);
+        executor.execute(() -> {
+            BslabUserDatabase.BslabUser user = BreakingSlab.getDatabase().load(player.getUniqueId());
+            future.complete(user);
+        });
 
-        if (block.getLocation().getBlockY() < 0 && resultYAtBlock != 0 && resultYAtBlock != 1) {
-            resultYAtBlock = 1 - resultYAtBlock;
-        }
+        future.thenAccept(entity -> {
+            if (!entity.isEnabled()) {
+                event.getBlock().breakNaturally();
+                return;
+            }
 
-        updateSlab(player, block,
-                resultYAtBlock <= .5d);
+            Location location = player.getEyeLocation();
+            Vector direction = location.getDirection();
+
+            RayTraceResult result = player.getWorld().rayTraceBlocks(location, direction, 8);
+            Vector resultDirection = Objects.requireNonNull(result).getHitPosition();
+
+            double resultYAtBlock;
+            if (resultDirection.getBlockY() > block.getLocation().getBlockY())
+                resultYAtBlock = 1;
+            else
+                resultYAtBlock = Math.abs(resultDirection.getY() % 1);
+
+            if (block.getLocation().getBlockY() < 0 && resultYAtBlock != 0 && resultYAtBlock != 1) {
+                resultYAtBlock = 1 - resultYAtBlock;
+            }
+
+            updateSlab(player, block,
+                    resultYAtBlock <= .5d);
+        });
+
+        // future.join();
     }
 
     private void updateSlab(Player player, Block block, boolean isUpperSlabHasLeft) {
@@ -100,12 +115,4 @@ public class OnSlabBreak implements Listener {
 
         return location;
     }
-
-    private boolean canPlayerEnabledBslab(Player player) {
-        UUID uuid = player.getUniqueId();
-        BslabUserDatabase.BslabUser user = BreakingSlab.getINSTANCE().getDatabase().load(uuid);
-
-        return (Objects.requireNonNull(user).isEnabled());
-    }
-    //
 }

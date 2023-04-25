@@ -28,19 +28,14 @@ import java.util.UUID;
 import java.util.function.Function;
 
 public final class BreakingSlab extends JavaPlugin implements Listener {
-    @Getter
-    private static BreakingSlab INSTANCE;
-
     private CommandManager<CommandSender> commandManager;
     private Config config;
-
     @Getter
-    private BslabUserDatabase database;
+    private static BslabUserDatabase database;
     private DatabaseCredentials credentials;
 
     @Override
     public void onEnable() {
-        INSTANCE = this;
         this.config = this.loadOrCreateConfig(new Config(new File(this.getDataFolder(), "config.yml")));
         this.commandManager = setupCommandSender();
 
@@ -80,17 +75,17 @@ public final class BreakingSlab extends JavaPlugin implements Listener {
                     .withDefaultHandlers()
                     .withHandler(MinecraftExceptionHandler.ExceptionType.NO_PERMISSION, (sender, exception) -> {
                         return LegacyComponentSerializer.legacyAmpersand().deserialize(
-                                config.convertMiniMessageToString(config.noPermissionMessage).toString()
+                                config.noPermissionMessage.toString()
                         );
                     })
                     .withHandler(MinecraftExceptionHandler.ExceptionType.INVALID_SYNTAX, (sender, exception) -> {
                         return LegacyComponentSerializer.legacySection().deserialize(
-                                config.convertMiniMessageToString(config.invalidSyntaxMessage).toString()
+                                config.invalidSyntaxMessage.toString()
                         );
                     })
                     .withHandler(MinecraftExceptionHandler.ExceptionType.INVALID_SENDER, (sender, exception) ->
                             LegacyComponentSerializer.legacyAmpersand().deserialize(
-                                    config.convertMiniMessageToString(config.invalidSenderMessage).toString()
+                                    config.invalidSenderMessage.toString()
                             )
                     )
                     .apply(manager, s -> s);
@@ -113,18 +108,21 @@ public final class BreakingSlab extends JavaPlugin implements Listener {
                         if (!(sender instanceof Player player))
                             return;
 
-                        BslabUserDatabase.BslabUser user = database.load(player.getUniqueId());
+                        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+                            BslabUserDatabase.BslabUser user = database.load(player.getUniqueId());
 
-                        if (Objects.requireNonNull(user).isEnabled()) {
-                            user.setEnabled(false);
-                            player.sendMessage(config.convertMiniMessageToString(config.disabledMessage));
-                        }
-                        else {
-                            user.setEnabled(true);
-                            player.sendMessage(config.convertMiniMessageToString(config.enabledMessage));
-                        }
+                            if (Objects.requireNonNull(user).isEnabled()) {
+                                user.setEnabled(false);
+                                player.sendMessage(config.disabledMessage);
+                            }
+                            else {
+                                user.setEnabled(true);
+                                player.sendMessage(config.enabledMessage);
+                            }
 
-                        database.updateTable(user);
+                            database.updateTable(user);
+                        });
+
                     })
         );
 
@@ -132,11 +130,15 @@ public final class BreakingSlab extends JavaPlugin implements Listener {
 
     @EventHandler
     private void onPlayerJoinAtFirstTime(PlayerJoinEvent event) {
-        UUID playerUUID = event.getPlayer().getUniqueId();
-        if (database.load(playerUUID) == null) {
-            BslabUserDatabase.BslabUser user = new BslabUserDatabase.BslabUser(playerUUID, config.enableDefault);
-            database.updateTable(user);
-        }
 
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+
+            UUID playerUUID = event.getPlayer().getUniqueId();
+            if (database.load(playerUUID) == null) {
+                BslabUserDatabase.BslabUser user = new BslabUserDatabase.BslabUser(playerUUID, config.enableDefault);
+                database.updateTable(user);
+            }
+
+        });
     }
 }
