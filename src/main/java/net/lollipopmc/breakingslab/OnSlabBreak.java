@@ -12,7 +12,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
@@ -42,10 +41,6 @@ public class OnSlabBreak implements Listener {
         } catch (NoClassDefFoundError ignored) {
 
         }
-
-        JavaPlugin plugin = BreakingSlab.getProvidingPlugin(BreakingSlab.class);
-        BreakingSlab.BreakingSlabScheduler breakingSlabScheduler =
-                new BreakingSlab.BreakingSlabScheduler((BreakingSlab) plugin);
 
         event.setCancelled(true);
 

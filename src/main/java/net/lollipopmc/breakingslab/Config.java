@@ -7,7 +7,6 @@ import net.lollipopmc.lib.configuration.holder.ConfigHolder;
 import net.lollipopmc.lib.configuration.serializers.ComponentSerializer;
 import net.lollipopmc.lib.database.engine.credentials.DatabaseCredentials;
 import net.lollipopmc.lib.database.url.DatabaseTypeUrl;
-import net.lollipopmc.lib.minimessage.MiniMessage;
 
 import java.io.File;
 
