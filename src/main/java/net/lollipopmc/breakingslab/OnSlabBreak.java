@@ -34,7 +34,7 @@ public class OnSlabBreak implements Listener {
         Player player = event.getPlayer();
 
         try {
-            if (!BslabWorldGuard.canPlayerHasPermissionToBreak(player, event.getBlock().getLocation()))
+            if (!BslabWorldGuard.canPlayerHasPermissionToBreak(player, block.getLocation()))
                 return;
 
         } catch (NoClassDefFoundError ignored) {
@@ -43,17 +43,10 @@ public class OnSlabBreak implements Listener {
 
         event.setCancelled(true);
 
-        Executor executor = Executors.newCachedThreadPool();
-        CompletableFuture<BslabUserDatabase.BslabUser> future = new CompletableFuture<>();
+        BreakingSlab.getBreakingSlabScheduler().runAsyncBukkitTask(() -> {
 
-        executor.execute(() -> {
-            BslabUserDatabase.BslabUser user = BreakingSlab.getDatabase().load(player.getUniqueId());
-            future.complete(user);
-        });
-
-        future.thenAccept(entity -> {
-            if (!entity.isEnabled()) {
-                event.getBlock().breakNaturally();
+            if (!isPlayerHasEnabledFunc(player)) {
+                BreakingSlab.getBreakingSlabScheduler().runSyncBukkitTask(block::breakNaturally);
                 return;
             }
 
@@ -76,8 +69,6 @@ public class OnSlabBreak implements Listener {
             updateSlab(player, block,
                     resultYAtBlock <= .5d);
         });
-
-        // future.join();
     }
 
     private void updateSlab(Player player, Block block, boolean isUpperSlabHasLeft) {
@@ -93,11 +84,14 @@ public class OnSlabBreak implements Listener {
         String blockDataNewStr = blockDataOldStr.replace("double", typeReplacement);
         BlockData blockDataNew = Bukkit.createBlockData(blockDataNewStr);
 
-        block.setBlockData(blockDataNew);
+        BreakingSlab.getBreakingSlabScheduler().runSyncBukkitTask(() -> {
 
-        if (player.getGameMode() != GameMode.CREATIVE)
-            dropSpawnLocation.getWorld().dropItemNaturally(dropSpawnLocation,
-                    new ItemStack(block.getType(), 1));
+            block.setBlockData(blockDataNew);
+
+            if (player.getGameMode() != GameMode.CREATIVE)
+                dropSpawnLocation.getWorld().dropItemNaturally(dropSpawnLocation,
+                        new ItemStack(block.getType(), 1));
+        });
     }
 
     private Location getCenterBlockLocation(Location location) {
@@ -115,4 +109,11 @@ public class OnSlabBreak implements Listener {
 
         return location;
     }
+
+    private boolean isPlayerHasEnabledFunc(Player player) {
+        BslabUserDatabase.BslabUser user = BreakingSlab.getDatabase().load(player.getUniqueId());
+
+        return Objects.requireNonNull(user).isEnabled();
+    }
+
 }

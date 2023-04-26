@@ -34,10 +34,15 @@ public final class BreakingSlab extends JavaPlugin implements Listener {
     private static BslabUserDatabase database;
     private DatabaseCredentials credentials;
 
+    @Getter
+    private static BreakingSlabScheduler breakingSlabScheduler;
+
     @Override
     public void onEnable() {
         this.config = this.loadOrCreateConfig(new Config(new File(this.getDataFolder(), "config.yml")));
         this.commandManager = setupCommandSender();
+
+        breakingSlabScheduler = new BreakingSlabScheduler(this);
 
         if (config.useMysql) {
             credentials = config.mysqlCredentials;
@@ -140,5 +145,14 @@ public final class BreakingSlab extends JavaPlugin implements Listener {
             }
 
         });
+    }
+
+
+    public void runBukkitTaskAsync(Runnable runnable) {
+        Bukkit.getScheduler().runTaskAsynchronously(this, runnable);
+    }
+
+    public void runBukkitTask(Runnable runnable) {
+        Bukkit.getScheduler().runTask(this, runnable);
     }
 }
