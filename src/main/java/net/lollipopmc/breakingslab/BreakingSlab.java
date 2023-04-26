@@ -2,7 +2,7 @@ package net.lollipopmc.breakingslab;
 
 import com.j256.ormlite.jdbc.db.H2DatabaseType;
 import com.j256.ormlite.jdbc.db.MysqlDatabaseType;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.lollipopmc.breakingslab.database.BslabUserDatabase;
 import net.lollipopmc.lib.LollipopLib;
@@ -30,19 +30,13 @@ import java.util.function.Function;
 public final class BreakingSlab extends JavaPlugin implements Listener {
     private CommandManager<CommandSender> commandManager;
     private Config config;
-    @Getter
-    private static BslabUserDatabase database;
+    private BslabUserDatabase database;
     private DatabaseCredentials credentials;
-
-    @Getter
-    private static BreakingSlabScheduler breakingSlabScheduler;
 
     @Override
     public void onEnable() {
         this.config = this.loadOrCreateConfig(new Config(new File(this.getDataFolder(), "config.yml")));
         this.commandManager = setupCommandSender();
-
-        breakingSlabScheduler = new BreakingSlabScheduler(this);
 
         if (config.useMysql) {
             credentials = config.mysqlCredentials;
@@ -59,7 +53,10 @@ public final class BreakingSlab extends JavaPlugin implements Listener {
         }
 
         breakingSlabCommandRegister();
-        getServer().getPluginManager().registerEvents(new OnSlabBreak(), this);
+
+        BreakingSlabScheduler breakingSlabScheduler = new BreakingSlabScheduler(this);
+
+        getServer().getPluginManager().registerEvents(new OnSlabBreak(breakingSlabScheduler, database), this);
         getServer().getPluginManager().registerEvents(this, this);
     }
 
@@ -148,11 +145,16 @@ public final class BreakingSlab extends JavaPlugin implements Listener {
     }
 
 
-    public void runBukkitTaskAsync(Runnable runnable) {
-        Bukkit.getScheduler().runTaskAsynchronously(this, runnable);
-    }
+    @AllArgsConstructor
+    public static class BreakingSlabScheduler {
+        private final BreakingSlab breakingSlab;
 
-    public void runBukkitTask(Runnable runnable) {
-        Bukkit.getScheduler().runTask(this, runnable);
+        public void runAsyncBukkitTask(Runnable runnable) {
+            Bukkit.getScheduler().runTaskAsynchronously(breakingSlab, runnable);
+        }
+
+        public void runSyncBukkitTask(Runnable runnable) {
+            Bukkit.getScheduler().runTask(breakingSlab, runnable);
+        }
     }
 }

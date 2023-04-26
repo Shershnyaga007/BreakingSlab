@@ -1,5 +1,6 @@
 package net.lollipopmc.breakingslab;
 
+import lombok.AllArgsConstructor;
 import net.lollipopmc.breakingslab.database.BslabUserDatabase;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -11,15 +12,16 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
+@AllArgsConstructor
 public class OnSlabBreak implements Listener {
+    private BreakingSlab.BreakingSlabScheduler breakingSlabScheduler;
+    private BslabUserDatabase database;
 
     @EventHandler
     private void onBlockBreak(BlockBreakEvent event) {
@@ -41,12 +43,16 @@ public class OnSlabBreak implements Listener {
 
         }
 
+        JavaPlugin plugin = BreakingSlab.getProvidingPlugin(BreakingSlab.class);
+        BreakingSlab.BreakingSlabScheduler breakingSlabScheduler =
+                new BreakingSlab.BreakingSlabScheduler((BreakingSlab) plugin);
+
         event.setCancelled(true);
 
-        BreakingSlab.getBreakingSlabScheduler().runAsyncBukkitTask(() -> {
+        breakingSlabScheduler.runAsyncBukkitTask(() -> {
 
             if (!isPlayerHasEnabledFunc(player)) {
-                BreakingSlab.getBreakingSlabScheduler().runSyncBukkitTask(block::breakNaturally);
+                breakingSlabScheduler.runSyncBukkitTask(block::breakNaturally);
                 return;
             }
 
@@ -84,7 +90,7 @@ public class OnSlabBreak implements Listener {
         String blockDataNewStr = blockDataOldStr.replace("double", typeReplacement);
         BlockData blockDataNew = Bukkit.createBlockData(blockDataNewStr);
 
-        BreakingSlab.getBreakingSlabScheduler().runSyncBukkitTask(() -> {
+        breakingSlabScheduler.runSyncBukkitTask(() -> {
 
             block.setBlockData(blockDataNew);
 
@@ -111,7 +117,7 @@ public class OnSlabBreak implements Listener {
     }
 
     private boolean isPlayerHasEnabledFunc(Player player) {
-        BslabUserDatabase.BslabUser user = BreakingSlab.getDatabase().load(player.getUniqueId());
+        BslabUserDatabase.BslabUser user = database.load(player.getUniqueId());
 
         return Objects.requireNonNull(user).isEnabled();
     }
